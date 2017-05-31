@@ -6,7 +6,7 @@
 #
 
 import bravialib
-from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+from http.server import BaseHTTPRequestHandler,HTTPServer
 import json
 import time
 import sys
@@ -36,10 +36,10 @@ class BraviaHandler(BaseHTTPRequestHandler):
         if type(payload) is dict:  payload = json.dumps(payload)
         content_len = len(payload)
         self._send_headers(code, content_type, content_len)
-        self.wfile.write(payload)
+        self.wfile.write(bytes(payload, 'UTF-8'))
 
     def do_GET(self):
-        print self.path
+        print(self.path)
         if tv.paired is False:
             if self.path == "/":
                 self.start_pairing()
@@ -123,11 +123,11 @@ class BraviaHandler(BaseHTTPRequestHandler):
         # /set/power/off
         # /set/app/iplayer
         if tv.paired is not True:
-            print "POST request received but TV is not paired."
+            print("POST request received but TV is not paired.")
             self.send_response(401,{"status":False})
             return None
         request = self.path.split('/')
-        print request
+        print(request)
         if len(request) != 4:
             self.send_response(400,{'status':False})
             return None
@@ -140,7 +140,7 @@ class BraviaHandler(BaseHTTPRequestHandler):
         self.send_reply(code, data)
         
     def POST_power(self, action):
-        print action
+        print(action)
         if action == "on":
             a = tv.poweron()
             if a is True:
@@ -195,11 +195,11 @@ class BraviaHandler(BaseHTTPRequestHandler):
             data = tv.dvbt_channels[channame]
         except KeyError:
             # Channel does not exist in our list
-            print "Channel '"+channame+"' not found in list."
+            print("Channel '"+channame+"' not found in list.")
             return(500, {'status':False})
         if 'hd_uri' in data: uri = data['hd_uri']
         else: uri = data['uri']
-        print "Channel URI is: " + uri
+        print("Channel URI is: " + uri)
         a = tv.set_external_input(uri)
         if a is True: return(200, {"status":True})
         else: return(500, {"status":False})
@@ -209,7 +209,7 @@ class BraviaHandler(BaseHTTPRequestHandler):
         tv.poweron()
         uri = tv.get_input_uri_from_label(inputname)
         if uri is not None:
-            print "URI is: " + uri
+            print("URI is: " + uri)
             a = tv.set_external_input(uri)
         else:
             a = False
@@ -294,27 +294,27 @@ class BraviaHandler(BaseHTTPRequestHandler):
         
                      
 if __name__ == "__main__":
-    tv = bravialib.Bravia('192.168.42.55','d8:d4:3c:f4:8e:5c')
+    tv = bravialib.Bravia('10.50.10.199','AC:9B:0A:3B:C7:AD')
     tv.device_id = "WhizzyLabsController:001"
     tv.nickname = "Whizzy Remote Control"
     # The TV needs to be on when we run this for the first time...
     if not tv.is_available():
         tv.wakeonlan()
-        print "TV needs to be on when this script is initialised. Sent WOL."
+        print("TV needs to be on when this script is initialised. Sent WOL.")
         for x in range(10):
             # The TV takes ages to boot
             telly_on = tv.is_available()
             if telly_on is True:
                 break
             else:
-                print "Attempt %s of 10" % str(x+1)
-                print "TV is not responding. Waiting for 10 seconds and trying again..."
+                print("Attempt %s of 10" % str(x+1))
+                print("TV is not responding. Waiting for 10 seconds and trying again...")
                 time.sleep(10)
 
         if telly_on is False:
             # TV still not available after retrying
-            print "Sorry, I couldn't connect to the TV."
-            print "Maybe it's not on, maybe the IP address is wrong, maybe it's an unsupported model."
+            print("Sorry, I couldn't connect to the TV.")
+            print("Maybe it's not on, maybe the IP address is wrong, maybe it's an unsupported model.")
             sys.exit(1)
             
     if tv.is_available():
@@ -323,21 +323,21 @@ if __name__ == "__main__":
         # be good enough to start the HTTP server and the rest can be done
         # from there.
         try:
-            print "Starting server..."
+            print("Starting server...")
             server = HTTPServer(('', PORT_NUMBER), BraviaHandler)
             response,state = tv.connect()
             if state is True:
-                print "Already paired and connected to the TV."
-                print "Ready to serve requests."
+                print("Already paired and connected to the TV.")
+                print("Ready to serve requests.")
             else:
-                print "TV is on and accepting requests, but I don't seem to be paired."
-                print "You should now point a browser at:"
+                print("TV is on and accepting requests, but I don't seem to be paired.")
+                print("You should now point a browser at:")
                 url = "http://" + tv.get_client_ip() + ":" + str(PORT_NUMBER) + "/"
-                print "\t" + url
-                print "to initialise and complete pairing."
+                print("\t" + url)
+                print("to initialise and complete pairing.")
             server.serve_forever()
         except:
-            print "Something happened, stopping."
+            print("Something happened, stopping.")
             server.socket.close()
             raise
 

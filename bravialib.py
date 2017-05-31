@@ -64,16 +64,16 @@ class Bravia(object):
 
     def _debug_request(self, r):
         # Pass a Requests response in here to see what happened
-        print "\n\n\n"
-        print "------- What was sent out ---------"
-        print r.request.headers
-        print r.request.body
-        print "---------What came back -----------"
-        print r.status_code
-        print r.headers
-        print r.text
-        print "-----------------------------------"
-        print "\n\n\n"        
+        print("\n\n\n")
+        print("------- What was sent out ---------")
+        print(r.request.headers)
+        print(r.request.body)
+        print("---------What came back -----------")
+        print(r.status_code)
+        print(r.headers)
+        print(r.text)
+        print("-----------------------------------")
+        print("\n\n\n")
         
         
     def _build_json_payload(self,method, params = [], version="1.0"):
@@ -89,7 +89,8 @@ class Bravia(object):
             # Using a shorter timeout here so we can return more quickly
             r = self.do_POST(url="/sony/system", payload = payload, timeout=2)
             data = r.json()
-            if data.has_key('result'):
+            print(data)
+            if data.__contains__('result'):
                 if data['result'][0]['status'] == "standby":
                     # TV is in standby mode, and so not on.
                     return False
@@ -98,9 +99,9 @@ class Bravia(object):
                     return True
                 else:
                     # Assume it's not on.
-                    print "Uncaught result"
+                    print("Uncaught result")
                     return False
-            if data.has_key('error'):
+            if data.__contains__('error'):
                 if 404 in data['error']:
                     # TV is probably booting at this point - so not available yet
                     return False
@@ -108,20 +109,20 @@ class Bravia(object):
                     # A 403 Forbidden is acceptable here, because it means the TV is responding to requests
                     return True
                 else:
-                    print "Uncaught error"
+                    print("Uncaught error")
                     return False
             return True
         except requests.exceptions.ConnectTimeout:
-            print "No response, TV is probably off"
+            print("No response, TV is probably off")
             return False
         except requests.exceptions.ConnectionError:
-            print "TV is certainly off."
+            print("TV is certainly off.")
             return False
         except requests.exceptions.ReadTimeout:
-            print "TV is on but not accepting commands yet"
+            print("TV is on but not accepting commands yet")
             return False
         except ValueError:
-            print "Didn't get back JSON as expected"
+            print("Didn't get back JSON as expected")
             # This might lead to false negatives - need to check
             return False
         
@@ -151,7 +152,7 @@ class Bravia(object):
             r = requests.post(url, data=payload, headers=headers, cookies=cookies, auth=self.auth, timeout=timeout)
         else:
             r = requests.post(url, data=payload, headers=headers, cookies=cookies, timeout=timeout)
-        print r
+        print(r)
         return r
 
     def connect(self):
@@ -177,10 +178,10 @@ class Bravia(object):
             try:
                 r = self.do_POST(url='/sony/accessControl', payload=payload)            
             except requests.exceptions.ConnectTimeout:
-                print "No response, TV is probably off"
+                print("No response, TV is probably off")
                 return None, False
             except requests.exceptions.ConnectionError:
-                print "TV is certainly off."
+                print("TV is certainly off.")
                 return None, False
 
             if r.status_code == 200:
@@ -190,7 +191,7 @@ class Bravia(object):
                         if "not power-on" in r.json()['error']:
                             # TV isn't powered up
                             r = self.wakeonlan()
-                            print "TV not on! Have sent wakeonlan, probably try again in a mo."
+                            print("TV not on! Have sent wakeonlan, probably try again in a mo.")
                             # TODO: make this less crap
                             return None,False
                 except:
@@ -208,7 +209,7 @@ class Bravia(object):
                     b = each.split('=')
                     self.DIAL_cookie[b[0].strip()] = b[1]
             elif r.status_code == 401:
-                print "We are not paired!"
+                print("We are not paired!")
                 return r,False
             elif r.status_code == 404:
                 # Most likely the TV hasn't booted yet
@@ -223,21 +224,21 @@ class Bravia(object):
             r = None
 
         # Populate some data now automatically.
-        print "Getting DMR info..."
+        print("Getting DMR info...")
         self.get_dmr()
-        print "Getting sysem info..."
+        print("Getting sysem info...")
         self.get_system_info()
-        print "Populating remote control codes..."
+        print("Populating remote control codes...")
         self.populate_controller_lookup()
-        print "Enumerating TV inputs..."
+        print("Enumerating TV inputs...")
         self.get_input_map()
-        print "Populating apps list..."
+        print("Populating apps list...")
         self.populate_apps_lookup()
-        print "Populating channel list..."
+        print("Populating channel list...")
         self.get_channel_list()
-        print "Matching HD channels..."
+        print("Matching HD channels...")
         self.create_HD_chan_lookups() # You might not want to do this if you don't use Freeview in the UK
-        print "Done initialising TV data."
+        print("Done initialising TV data.")
         return r,True
 
             
@@ -248,7 +249,7 @@ class Bravia(object):
             [{"value":"no","function":"WOL"}]])
         r = self.do_POST(url='/sony/accessControl', payload=payload)
         if r.status_code == 200:
-            print "Probably already paired"
+            print("Probably already paired")
             return r,True
         if r.status_code == 401:
             return r,False
@@ -298,7 +299,7 @@ class Bravia(object):
         for each in self.input_map:
             if self.input_map[each]['label'] == label:
                 return self.input_map[each]['uri']
-        print "Didnt match the input name."
+        print("Didnt match the input name.")
         return None
 
     def set_external_input(self, uri):
@@ -315,7 +316,7 @@ class Bravia(object):
         
 
     def get_dmr(self):
-        r = self.do_GET('http://'+self.ip_addr+':52323/dmr.xml')
+        r = self.do_GET('http://'+self.ip_addr+':80/sony/webapi/ssdp/dd.xml')
         self.dmr_data = minidom.parseString(r.text)
         # XML.  FFS. :(
         self.device_friendly_name = self.dmr_data.getElementsByTagName('friendlyName')[0].childNodes[0].data
@@ -398,13 +399,13 @@ class Bravia(object):
             app_id = self.app_lookup[app_name]['id']
         except KeyError:
             return False
-        print "Trying to load app:", app_id
+        print("Trying to load app:", app_id)
         headers = {'Connection':'close'}
         r = self.do_POST(url="/DIAL/apps/"+app_id, headers=headers,
             cookies=self.DIAL_cookie)
-        print r.status_code
-        print r.headers
-        print r
+        print(r.status_code)
+        print(r.headers)
+        print(r)
         if r.status_code == 201:
             return True
         else:
@@ -434,7 +435,7 @@ class Bravia(object):
             a = r.json()['result'][0]
             for each in a:
                 if each['title'] == "": continue # We get back some blank entries, so just ignore them
-                if self.dvbt_channels.has_key(each['title']):
+                if self.dvbt_channels.__contains__(each['title']):
                     # Channel has already been added, we only want to keep the one with the lowest chan_num.
                     # The TV seems to return channel data for channels it can't actually receive (e.g. out of
                     # area local BBC channels). Trying to tune to these gives an error.
@@ -455,7 +456,7 @@ class Bravia(object):
         # one but you don't want to have to say "BBC ONE HD" because that would
         # be stupid.  So you just say "BBC ONE" and the script does the work to
         # find the HD version for you.
-        for each in self.dvbt_channels.iteritems():
+        for each in self.dvbt_channels.items():
             hd_version = "%s HD" % each[0] # e.g. "BBC ONE" -> "BBC ONE HD"
             if hd_version in self.dvbt_channels:
                 # Extend the schema by adding a "hd_uri" key
@@ -473,7 +474,7 @@ class Bravia(object):
         # Not using another library for this as it's pretty small...
         if mac is None and self.mac_addr is not None:
             mac = self.mac_addr
-        print "Waking MAC: " + mac
+        print("Waking MAC: " + mac)
         addr_byte = mac.split(':')
         hw_addr = struct.pack('BBBBBB', int(addr_byte[0], 16),
                               int(addr_byte[1], 16),
@@ -492,7 +493,7 @@ class Bravia(object):
         # Convenience function to switch the TV on and block until it's ready
         # to accept commands.
         if self.paired is False:
-            print "You can only call this function once paired with the TV"
+            print("You can only call this function once paired with the TV")
             return False
         elif self.paired is True:
             ready = False
@@ -502,13 +503,13 @@ class Bravia(object):
             self.wakeonlan()
             for x in range(10):
                 if self.is_available() is True:
-                    print "TV now available"
+                    print("TV now available")
                     return True
                 else:
-                    print "Didn't get a response. Trying again in 10 seconds. (Attempt "+str(x+1)+" of 10)" 
+                    print("Didn't get a response. Trying again in 10 seconds. (Attempt "+str(x+1)+" of 10)")
                     time.sleep(10)
             if ready is False:
-                print "Couldnt connect in a timely manner. Giving up"
+                print("Couldnt connect in a timely manner. Giving up")
                 return False
             else:
                 return True
